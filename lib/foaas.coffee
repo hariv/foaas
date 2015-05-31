@@ -59,7 +59,10 @@ module.exports = class FOAAS
     # GET / and /index.html sends index HTML page.
     @app.get '/', @sendIndex
     @app.get 'index.html', @sendIndex
-
+    @app.get '/random/:foo', @sendRandom
+    @app.get '/random/:foo/:bar', @sendRandom
+    @app.get '/random/:foo/:bar/:xyz', @sendRandom
+    @app.get '/:thing/:from', @sendDefault
     # OPTIONS on any route sends CORS above and ends
     @app.options "*", (req, res) ->
       res.end()
@@ -69,6 +72,37 @@ module.exports = class FOAAS
     
     # Renderers
     @loadRenderers(renderersPath)
+
+  sendRandom: (req, res) =>
+    tempArray=[]
+    if req.params.foo && req.params.bar && req.params.xyz
+      for operation in @operationsArray
+        if operation.fields.length==3
+          tempArray.push operation
+      maxNumber=tempArray.length-1
+      randomAction=tempArray[Math.floor(Math.random() * maxNumber)]
+      if randomAction.name == "Field of Fucks"
+          randomAction.name="field"
+      res.redirect("/"+randomAction.name.toLowerCase()+"/"+req.params.foo+"/"+req.params.bar+"/"+req.params.xyz)
+    else if req.params.foo && req.params.bar
+      for operation in @operationsArray
+        if operation.fields.length==2
+          tempArray.push operation
+      maxNumber=tempArray.length-1
+      randomAction=tempArray[Math.floor(Math.random() * maxNumber)]
+      res.redirect("/"+randomAction.name.toLowerCase()+"/"+req.params.foo+"/"+req.params.bar)    
+    else
+      for operation in @operationsArray
+        if operation.fields.length==1
+          tempArray.push operation
+      maxNumber=tempArray.length-1
+      randomAction=tempArray[Math.floor(Math.random() * maxNumber)]
+      res.redirect("/"+randomAction.name.toLowerCase()+"/"+req.params.foo)
+
+  sendDefault: (req,res) =>
+    message = "Fuck #{req.params.thing}."
+    subtitle = "- #{req.params.from}"
+    @output(req, res, message, subtitle)
 
   send622: (req, res) =>
     # NewRelic hasn't yet adopted the HTTP 6xx (Sarcasm) series of responses.
@@ -107,12 +141,6 @@ module.exports = class FOAAS
     # /operations endpoint
     @app.get '/operations', (req, res) =>
       res.send @operationsArray
-
-    # Default Operation
-    @app.get '/:thing/:from', (req, res) =>
-      message = "Fuck #{req.params.thing}."
-      subtitle = "- #{req.params.from}"
-      @output(req, res, message, subtitle)
 
   start: (port) =>
     @app.listen port
